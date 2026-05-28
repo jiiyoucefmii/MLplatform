@@ -485,7 +485,33 @@ export default function ForecastPanel({ state, activeMeals }: ForecastPanelProps
   const [response,  setResponse]  = useState<ForecastResponse | null>(null);
   const [error,     setError]     = useState("");
 
-  const canRun = !!state.canteenId && state.weatherDays.length === 7;
+  const getSelectedCount = (meal: string) => {
+    const selected = state.selectedMenuItems[meal] || {};
+    return Object.values(selected).reduce((acc, arr) => acc + (arr?.length || 0), 0);
+  };
+
+  const validationErrors: string[] = [];
+  if (activeMeals.includes("breakfast")) {
+    const count = getSelectedCount("breakfast");
+    if (count < 3) {
+      validationErrors.push(`Petit-déjeuner : au moins 3 articles requis (actuel : ${count})`);
+    }
+  }
+  if (activeMeals.includes("lunch")) {
+    const count = getSelectedCount("lunch");
+    if (count < 5) {
+      validationErrors.push(`Déjeuner : au moins 5 articles requis (actuel : ${count})`);
+    }
+  }
+  if (activeMeals.includes("dinner")) {
+    const count = getSelectedCount("dinner");
+    if (count < 5) {
+      validationErrors.push(`Dîner : au moins 5 articles requis (actuel : ${count})`);
+    }
+  }
+
+  const isMenuValid = validationErrors.length === 0;
+  const canRun = !!state.canteenId && state.weatherDays.length === 7 && isMenuValid;
 
   async function runForecast() {
     if (!canRun) return;
@@ -596,6 +622,13 @@ export default function ForecastPanel({ state, activeMeals }: ForecastPanelProps
             {!canRun && !state.canteenId && (
               <span style={{ fontSize: 12, color: "#888" }}>
                 <AlertCircle size={12} style={{ verticalAlign: "middle" }} /> Sélectionnez une cantine pour lancer la prévision
+              </span>
+            )}
+
+            {!isMenuValid && state.canteenId && (
+              <span style={{ fontSize: 12, color: "#d32f2f", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                <AlertCircle size={13} style={{ flexShrink: 0 }} />
+                <span>{validationErrors.join(" · ")}</span>
               </span>
             )}
           </div>

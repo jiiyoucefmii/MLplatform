@@ -109,6 +109,28 @@ async def forecast(req: ForecastRequest):
         if m.lower() not in valid_meals:
             raise HTTPException(400, f"Invalid meal_type: '{m}'. Must be one of {valid_meals}")
 
+    # Validate minimum menu item counts
+    for meal in req.meal_types:
+        mc = req.menu_counts.get(meal.lower())
+        if not mc:
+            raise HTTPException(400, f"Missing menu_counts for meal: {meal}")
+        
+        total_items = (
+            mc.n_bread + mc.n_protein + mc.n_main_dish + mc.n_side_dish +
+            mc.n_soup + mc.n_dessert + mc.n_drink + mc.n_spread
+        )
+        
+        if meal.lower() == "breakfast" and total_items < 3:
+            raise HTTPException(
+                400, 
+                f"Au moins 3 articles doivent être sélectionnés pour le petit-déjeuner (reçu : {total_items})"
+            )
+        elif meal.lower() in ("lunch", "dinner") and total_items < 5:
+            raise HTTPException(
+                400, 
+                f"Au moins 5 articles doivent être sélectionnés pour le {meal} (reçu : {total_items})"
+            )
+
     # Convert Pydantic objects to plain dicts
     weather_days   = [w.model_dump() for w in req.weather_days]
     calendar_days  = [c.model_dump() for c in req.calendar_days]
