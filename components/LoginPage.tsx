@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, Lock, ChevronDown, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { User, ChevronDown, Eye, EyeOff, CheckCircle } from "lucide-react";
 import PageLoader from "./PageLoader";
 
 const CANTEENS = [

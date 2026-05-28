@@ -1,6 +1,6 @@
 "use client";
 
-import { Cloud, Thermometer, Droplets, Wind, Sun, BookOpen, Moon, Flag, RefreshCw, Zap } from "lucide-react";
+import { Cloud, Thermometer, BookOpen, RefreshCw, Zap } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { WeatherDay } from "./Dashboard";
 

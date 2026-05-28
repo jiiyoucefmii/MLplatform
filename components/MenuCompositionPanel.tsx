@@ -1,6 +1,6 @@
 "use client";
 
-import { ChefHat, ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChefHat, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import type { MealType, MenuCounts } from "./Dashboard";
 
@@ -78,10 +78,10 @@ export function selectedItemsToMenuCounts(selected: Record<string, string[]>): M
 
 // ── Category picker for one meal ─────────────────────────────────────────────
 function CategoryPicker({
-  catKey, label, emoji, items, selected, onToggle,
+  label, emoji, items, selected, onToggle,
   accentColor, chipBg, chipText,
 }: {
-  catKey: string; label: string; emoji: string;
+  label: string; emoji: string;
   items: string[]; selected: string[];
   onToggle: (item: string) => void;
   accentColor: string; chipBg: string; chipText: string;
@@ -210,7 +210,6 @@ function MealMenuBlock({
         {cats.map(cat => (
           <CategoryPicker
             key={cat.key}
-            catKey={cat.key}
             label={cat.label}
             emoji={cat.emoji}
             items={mealItems[cat.key] ?? []}
