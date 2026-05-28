@@ -17,9 +17,14 @@ interface DayResult {
   q50:     number;
   q90:     number;
 }
+interface HistoryPoint {
+  date:   string;
+  demand: number;
+}
 interface MealResult {
   meal_type: string;
   forecasts: DayResult[];
+  history?:  HistoryPoint[];
   warnings:  string[];
 }
 interface ForecastResponse {
@@ -95,6 +100,259 @@ function buildPayload(state: DashboardState, activeMeals: string[]) {
   };
 }
 
+function HistoryForecastChart({
+  history,
+  forecasts,
+  meal,
+}: {
+  history: HistoryPoint[];
+  forecasts: DayResult[];
+  meal: string;
+}) {
+  const colors = MEAL_COLORS[meal] || MEAL_COLORS.lunch;
+  
+  if (!history || history.length === 0) {
+    return (
+      <div style={{ padding: "12px", fontSize: 11, color: "#888", textAlign: "center", background: "#f8f9fa", borderRadius: 4, border: "1px solid #e9ecef" }}>
+        Données historiques insuffisantes pour afficher la tendance du mois passé.
+      </div>
+    );
+  }
+
+  // Combine data to find boundaries
+  const allHistoryDemands = history.map((h) => h.demand);
+  const allForecastQ50s = forecasts.map((f) => f.q50);
+  const allForecastQ90s = forecasts.map((f) => f.q50 + (f.q90 - f.q10) / 2);
+  const allForecastQ10s = forecasts.map((f) => Math.max(0, f.q50 - (f.q90 - f.q10) / 2));
+  
+  const allYValues = [...allHistoryDemands, ...allForecastQ50s, ...allForecastQ90s, ...allForecastQ10s];
+  const maxYRaw = allYValues.length > 0 ? Math.max(...allYValues) : 100;
+  const maxY = Math.ceil((maxYRaw > 0 ? maxYRaw : 10) * 1.1 / 10) * 10;
+  const minY = 0;
+
+  // Chart dimensions
+  const width = 800;
+  const height = 180;
+  const paddingLeft = 45;
+  const paddingRight = 15;
+  const paddingTop = 15;
+  const paddingBottom = 25;
+  
+  const plotWidth = width - paddingLeft - paddingRight;
+  const plotHeight = height - paddingTop - paddingBottom;
+
+  const totalPoints = history.length + forecasts.length;
+  const dx = plotWidth / (totalPoints - 1 || 1);
+
+  // Compute history coordinates
+  const historyPoints = history.map((h, i) => {
+    const x = paddingLeft + i * dx;
+    const y = height - paddingBottom - ((h.demand - minY) / (maxY - minY)) * plotHeight;
+    return { x, y, ...h };
+  });
+
+  // Compute forecast coordinates
+  const forecastPoints = forecasts.map((f, i) => {
+    const idx = history.length + i;
+    const x = paddingLeft + idx * dx;
+    const halfSpread = (f.q90 - f.q10) / 2;
+    
+    const y = height - paddingBottom - ((f.q50 - minY) / (maxY - minY)) * plotHeight;
+    const yMin = height - paddingBottom - ((Math.max(0, f.q50 - halfSpread) - minY) / (maxY - minY)) * plotHeight;
+    const yMax = height - paddingBottom - (((f.q50 + halfSpread) - minY) / (maxY - minY)) * plotHeight;
+    return { x, y, yMin, yMax, ...f };
+  });
+
+  // SVG Paths
+  let historyPath = "";
+  if (historyPoints.length > 0) {
+    historyPath = `M ${historyPoints[0].x} ${historyPoints[0].y} ` + 
+      historyPoints.slice(1).map((p) => `L ${p.x} ${p.y}`).join(" ");
+  }
+
+  let historyAreaPath = "";
+  if (historyPoints.length > 0) {
+    historyAreaPath = `${historyPath} L ${historyPoints[historyPoints.length - 1].x} ${height - paddingBottom} L ${historyPoints[0].x} ${height - paddingBottom} Z`;
+  }
+
+  let forecastPath = "";
+  if (forecastPoints.length > 0 && historyPoints.length > 0) {
+    forecastPath = `M ${historyPoints[historyPoints.length - 1].x} ${historyPoints[historyPoints.length - 1].y} ` +
+      forecastPoints.map((p) => `L ${p.x} ${p.y}`).join(" ");
+  }
+
+  let confidenceAreaPath = "";
+  if (forecastPoints.length > 0 && historyPoints.length > 0) {
+    const lastHistory = historyPoints[historyPoints.length - 1];
+    const topLine = `M ${lastHistory.x} ${lastHistory.y} ` + forecastPoints.map(p => `L ${p.x} ${p.yMax}`).join(" ");
+    const bottomLine = forecastPoints.slice().reverse().map(p => `L ${p.x} ${p.yMin}`).join(" ") + ` L ${lastHistory.x} ${lastHistory.y}`;
+    confidenceAreaPath = `${topLine} ${bottomLine} Z`;
+  }
+
+  // Grid lines
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((p) => {
+    const val = minY + p * (maxY - minY);
+    const y = height - paddingBottom - p * plotHeight;
+    return { y, val };
+  });
+
+  const separatorX = historyPoints.length > 0 ? historyPoints[historyPoints.length - 1].x : paddingLeft;
+
+  const formatShortDate = (iso: string) => {
+    const parts = iso.split("-");
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
+    return iso;
+  };
+
+  return (
+    <div style={{ border: "1px solid #e9ecef", borderRadius: 4, padding: "10px 14px", background: "#f8f9fa", width: "100%", boxSizing: "border-box" }}>
+      {/* Legend & Title */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#495057" }}>
+          Tendance des 30 derniers jours vs Prévisions sur 7 jours
+        </span>
+        <div style={{ display: "flex", gap: 10, fontSize: 9, flexWrap: "wrap" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 8, height: 2, background: "#64748b", display: "inline-block" }} />
+            Historique
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 8, height: 2, background: colors.accent, display: "inline-block" }} />
+            Prévision (q50)
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 8, height: 6, background: colors.accent, opacity: 0.12, display: "inline-block" }} />
+            Marge d&apos;incertitude
+          </span>
+        </div>
+      </div>
+
+      {/* SVG Canvas */}
+      <div style={{ width: "100%" }}>
+        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", display: "block", overflow: "visible" }}>
+          {gridLines.map((line, idx) => (
+            <g key={idx}>
+              <line
+                x1={paddingLeft}
+                y1={line.y}
+                x2={width - paddingRight}
+                y2={line.y}
+                stroke="#e9ecef"
+                strokeWidth={1}
+                strokeDasharray={idx === 0 ? "none" : "3,3"}
+              />
+              <text
+                x={paddingLeft - 8}
+                y={line.y + 3}
+                textAnchor="end"
+                style={{ fontSize: 8, fill: "#6c757d", fontFamily: "sans-serif" }}
+              >
+                {line.val.toFixed(0)}
+              </text>
+            </g>
+          ))}
+
+          {historyAreaPath && (
+            <path d={historyAreaPath} fill="rgba(100, 116, 139, 0.05)" stroke="none" />
+          )}
+
+          {confidenceAreaPath && (
+            <path d={confidenceAreaPath} fill={colors.accent} fillOpacity={0.12} stroke="none" />
+          )}
+
+          {historyPath && (
+            <path d={historyPath} fill="none" stroke="#64748b" strokeWidth={1.5} />
+          )}
+
+          {forecastPath && (
+            <path d={forecastPath} fill="none" stroke={colors.accent} strokeWidth={2.0} />
+          )}
+
+          {historyPoints.filter((_, i) => i % 4 === 0 || i === historyPoints.length - 1).map((p, i) => (
+            <circle key={`hd-${i}`} cx={p.x} cy={p.y} r={2} fill="#64748b" />
+          ))}
+
+          {forecastPoints.map((p, i) => (
+            <g key={`fd-${i}`}>
+              <circle cx={p.x} cy={p.y} r={3} fill={colors.accent} stroke="#fff" strokeWidth={1} />
+              <text
+                x={p.x}
+                y={p.y - 7}
+                textAnchor="middle"
+                style={{ fontSize: 8, fontWeight: 700, fill: colors.accent, fontFamily: "sans-serif" }}
+              >
+                {p.q50.toFixed(0)}
+              </text>
+            </g>
+          ))}
+
+          <line
+            x1={separatorX}
+            y1={paddingTop}
+            x2={separatorX}
+            y2={height - paddingBottom}
+            stroke="#adb5bd"
+            strokeWidth={1}
+            strokeDasharray="3,3"
+          />
+          <text
+            x={separatorX}
+            y={paddingTop - 4}
+            textAnchor="middle"
+            style={{ fontSize: 7, fontWeight: 700, fill: "#6c757d", fontFamily: "sans-serif" }}
+          >
+            Aujourd&apos;hui
+          </text>
+
+          {historyPoints.length > 0 && (
+            <text
+              x={historyPoints[0].x}
+              y={height - paddingBottom + 12}
+              textAnchor="middle"
+              style={{ fontSize: 8, fill: "#6c757d", fontFamily: "sans-serif" }}
+            >
+              {formatShortDate(historyPoints[0].date)}
+            </text>
+          )}
+
+          {historyPoints.length > 15 && (
+            <text
+              x={historyPoints[Math.floor(historyPoints.length / 2)].x}
+              y={height - paddingBottom + 12}
+              textAnchor="middle"
+              style={{ fontSize: 8, fill: "#6c757d", fontFamily: "sans-serif" }}
+            >
+              {formatShortDate(historyPoints[Math.floor(historyPoints.length / 2)].date)}
+            </text>
+          )}
+
+          {historyPoints.length > 0 && (
+            <text
+              x={separatorX}
+              y={height - paddingBottom + 12}
+              textAnchor="middle"
+              style={{ fontSize: 8, fontWeight: 700, fill: "#495057", fontFamily: "sans-serif" }}
+            >
+              {formatShortDate(history[history.length - 1].date)}
+            </text>
+          )}
+
+          {forecastPoints.length > 0 && (
+            <text
+              x={forecastPoints[forecastPoints.length - 1].x}
+              y={height - paddingBottom + 12}
+              textAnchor="middle"
+              style={{ fontSize: 8, fontWeight: 700, fill: colors.accent, fontFamily: "sans-serif" }}
+            >
+              {formatShortDate(forecastPoints[forecastPoints.length - 1].date)}
+            </text>
+          )}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 // ── Meal result table ─────────────────────────────────────────────────────────
 function MealForecastTable({ meal, result }: { meal: string; result: MealResult }) {
   const colors = MEAL_COLORS[meal] || MEAL_COLORS.lunch;
@@ -127,8 +385,13 @@ function MealForecastTable({ meal, result }: { meal: string; result: MealResult 
         </div>
       )}
 
-      {/* Table */}
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+      {/* Content Container */}
+      <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14, backgroundColor: "#fff" }}>
+        {/* SVG History and Forecast Chart */}
+        <HistoryForecastChart history={result.history || []} forecasts={result.forecasts} meal={meal} />
+
+        {/* Table */}
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
         <thead>
           <tr style={{ background: "#f1f1f1" }}>
             <th style={thStyle}>Date</th>
@@ -199,6 +462,7 @@ function MealForecastTable({ meal, result }: { meal: string; result: MealResult 
           </tr>
         </tfoot>
       </table>
+      </div>
 
       {/* Meal note */}
       {meal === "breakfast" && (

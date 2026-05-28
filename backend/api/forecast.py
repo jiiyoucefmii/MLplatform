@@ -77,9 +77,15 @@ class DayResult(BaseModel):
     q90: float
 
 
+class HistoryPoint(BaseModel):
+    date: str
+    demand: float
+
+
 class MealResult(BaseModel):
     meal_type: str
     forecasts: list[DayResult]
+    history: list[HistoryPoint] = []
     warnings: list[str] = []
 
 
@@ -129,13 +135,35 @@ async def forecast(req: ForecastRequest):
     elapsed_ms = (time.perf_counter() - t0) * 1000
 
     # Build response
+    import pandas as pd
+    anchor_dt = pd.to_datetime(req.anchor_date)
+    start_dt = anchor_dt - pd.Timedelta(days=30)
+
     results: dict[str, MealResult] = {}
     for meal, r in raw_results.items():
         if "error" in r:
             raise HTTPException(404, r["warnings"][0] if r["warnings"] else "Canteen not found")
+        
+        # Extract history for this canteen and meal type
+        meal_df = APP_STATE.raw_df[
+            (APP_STATE.raw_df["canteen_id"] == req.canteen_id) &
+            (APP_STATE.raw_df["meal_type"] == meal) &
+            (APP_STATE.raw_df["date"] >= start_dt) &
+            (APP_STATE.raw_df["date"] <= anchor_dt)
+        ].sort_values("date")
+        
+        history_points = [
+            HistoryPoint(
+                date=row.date.strftime("%Y-%m-%d"),
+                demand=float(getattr(row, "demand_count", 0.0))
+            )
+            for row in meal_df.itertuples()
+        ]
+
         results[meal] = MealResult(
             meal_type = meal,
             forecasts = [DayResult(**d) for d in r["forecasts"]],
+            history   = history_points,
             warnings  = r.get("warnings", []),
         )
 
