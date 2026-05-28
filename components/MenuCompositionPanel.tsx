@@ -60,7 +60,7 @@ const MEAL_LABELS: Record<string, string> = {
 };
 
 // ── State: selected items per meal per category ───────────────────────────────
-export type SelectedMenuItems = Record<string, Record<string, string[]>>;
+export type SelectedMenuItems = Record<string, string[]>;
 
 // Convert selected items → MenuCounts (just count per category)
 export function selectedItemsToMenuCounts(selected: Record<string, string[]>): MenuCounts {
@@ -249,7 +249,7 @@ function MealMenuBlock({
 // ── Main component ─────────────────────────────────────────────────────────────
 interface MenuCompositionPanelProps {
   mealType:     MealType;
-  selectedMenuItems: SelectedMenuItems;
+  selectedMenuItems: Record<string, SelectedMenuItems>;
   onToggleItem: (meal: string, cat: string, item: string) => void;
 }
 

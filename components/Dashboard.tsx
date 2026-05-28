@@ -41,10 +41,10 @@ export interface DashboardState {
   canteenId:       string;
   canteenDisplay:  string;
   wilayaNum:       number;
-  // menu: selected items per meal per category
-  selectedMenuItems: SelectedMenuItems;
+  // menu: selected items per meal per date per category
+  selectedMenuItems: Record<string, Record<string, SelectedMenuItems>>;
   // computed counts (derived from selectedMenuItems)
-  menuCounts:      Record<string, MenuCounts>;
+  menuCounts:      Record<string, Record<string, MenuCounts>>;
   weatherDays:     WeatherDay[];
   weatherAutoFetch: boolean;
   calendar:        CalendarState;
@@ -65,11 +65,6 @@ function defaultWeatherDays(anchorDate: string): WeatherDay[] {
 
 const today = new Date().toISOString().split("T")[0];
 
-const ZERO_COUNTS: MenuCounts = {
-  n_bread:0, n_protein:0, n_main_dish:0, n_side_dish:0,
-  n_soup:0, n_dessert:0, n_drink:0, n_spread:0,
-};
-
 interface DashboardProps {
   agentInfo: { username: string; canteen: string };
   onLogout:  () => void;
@@ -77,6 +72,7 @@ interface DashboardProps {
 
 export default function Dashboard({ agentInfo, onLogout }: DashboardProps) {
   const [activeNav, setActiveNav] = useState("forecast");
+  const [activeDateIndex, setActiveDateIndex] = useState(0); // 0 to 6 index of forecast days
 
   const [state, setState] = useState<DashboardState>({
     date:            today,
@@ -85,7 +81,7 @@ export default function Dashboard({ agentInfo, onLogout }: DashboardProps) {
     canteenDisplay:  "",
     wilayaNum:       0,
     selectedMenuItems: { breakfast: {}, lunch: {}, dinner: {} },
-    menuCounts:      { breakfast: { ...ZERO_COUNTS }, lunch: { ...ZERO_COUNTS }, dinner: { ...ZERO_COUNTS } },
+    menuCounts:      { breakfast: {}, lunch: {}, dinner: {} },
     weatherDays:     defaultWeatherDays(today),
     weatherAutoFetch: true,
     calendar:        DEFAULT_CALENDAR,
@@ -103,26 +99,79 @@ export default function Dashboard({ agentInfo, onLogout }: DashboardProps) {
     setState(prev => ({ ...prev, mealType }));
   }, []);
 
-  // Toggle a menu item on/off for a given meal + category
-  const handleToggleItem = useCallback((meal: string, cat: string, item: string) => {
+  // Toggle a menu item on/off for a given meal + date + category
+  const handleToggleItem = useCallback((meal: string, date: string, cat: string, item: string) => {
     setState(prev => {
-      const mealSel  = { ...(prev.selectedMenuItems[meal] ?? {}) };
-      const catItems = [...(mealSel[cat] ?? [])];
-      const idx      = catItems.indexOf(item);
+      const prevSelected = { ...prev.selectedMenuItems };
+      const mealSel = { ...(prevSelected[meal] ?? {}) };
+      const dateSel = { ...(mealSel[date] ?? {}) };
+      const catItems = [...(dateSel[cat] ?? [])];
+      
+      const idx = catItems.indexOf(item);
       if (idx >= 0) catItems.splice(idx, 1); else catItems.push(item);
-      mealSel[cat]   = catItems;
-
-      const nextSelected = { ...prev.selectedMenuItems, [meal]: mealSel };
-      const nextCounts   = { ...prev.menuCounts, [meal]: selectedItemsToMenuCounts(mealSel) };
+      dateSel[cat] = catItems;
+      mealSel[date] = dateSel;
+      
+      const nextSelected = { ...prevSelected, [meal]: mealSel };
+      
+      const nextCounts = { ...prev.menuCounts };
+      const mealCounts = { ...(nextCounts[meal] ?? {}) };
+      mealCounts[date] = selectedItemsToMenuCounts(dateSel);
+      nextCounts[meal] = mealCounts;
 
       return { ...prev, selectedMenuItems: nextSelected, menuCounts: nextCounts };
     });
   }, []);
 
-  const activeMeals: string[] =
-    state.mealType === "All Meals"
-      ? ["breakfast", "lunch", "dinner"]
-      : [state.mealType.toLowerCase()];
+  // Copy current active date's menu to all other forecast days
+  const copyActiveMenuToAllDays = useCallback(() => {
+    const activeMeals = state.mealType === "All Meals" ? ["breakfast", "lunch", "dinner"] : [state.mealType.toLowerCase()];
+    const activeDate = state.weatherDays[activeDateIndex]?.date;
+    if (!activeDate) return;
+    
+    setState(prev => {
+      const nextSelected = { ...prev.selectedMenuItems };
+      const nextCounts = { ...prev.menuCounts };
+      
+      for (const meal of activeMeals) {
+        const activeSelection = nextSelected[meal]?.[activeDate] || {};
+        const mealSel = { ...(nextSelected[meal] ?? {}) };
+        const mealCounts = { ...(nextCounts[meal] ?? {}) };
+        
+        for (const w of prev.weatherDays) {
+          if (w.date === activeDate) continue;
+          mealSel[w.date] = JSON.parse(JSON.stringify(activeSelection));
+          mealCounts[w.date] = selectedItemsToMenuCounts(activeSelection);
+        }
+        
+        nextSelected[meal] = mealSel;
+        nextCounts[meal] = mealCounts;
+      }
+      
+      return { ...prev, selectedMenuItems: nextSelected, menuCounts: nextCounts };
+    });
+  }, [state.mealType, state.weatherDays, activeDateIndex]);
+
+  const activeDate = state.weatherDays[activeDateIndex]?.date;
+
+  const getMenuForActiveDate = () => {
+    if (!activeDate) return {};
+    const activeMeals = state.mealType === "All Meals" ? ["breakfast", "lunch", "dinner"] : [state.mealType.toLowerCase()];
+    const result: Record<string, Record<string, string[]>> = {};
+    for (const m of activeMeals) {
+      result[m] = state.selectedMenuItems[m]?.[activeDate] || {};
+    }
+    return result;
+  };
+
+  const formatShortDate = (iso: string) => {
+    const DOW_ABBR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+    const d = new Date(iso + "T00:00:00");
+    const dow = DOW_ABBR[d.getDay() === 0 ? 6 : d.getDay() - 1];
+    return `${dow} ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
+
+  const activeMeals = state.mealType === "All Meals" ? ["breakfast", "lunch", "dinner"] : [state.mealType.toLowerCase()];
 
   return (
     <div style={{ display: "flex", height: "100vh", backgroundColor: "#dde1e4", overflow: "hidden" }}>
@@ -144,10 +193,61 @@ export default function Dashboard({ agentInfo, onLogout }: DashboardProps) {
               onCanteenChange={handleCanteenChange}
             />
 
+            {/* Days Selector Tabs & Copy Button */}
+            <div style={{
+              background: "#fff", border: "1px solid #dee2e6", borderRadius: 4, padding: "10px 14px",
+              display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10
+            }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#555", marginRight: 8 }}>
+                  Menu pour le jour :
+                </span>
+                {state.weatherDays.map((w, idx) => {
+                  const isActive = idx === activeDateIndex;
+                  
+                  // Compute count of selected items for this day across active meals
+                  const activeMeals = state.mealType === "All Meals" ? ["breakfast", "lunch", "dinner"] : [state.mealType.toLowerCase()];
+                  let count = 0;
+                  for (const m of activeMeals) {
+                    const daySelection = state.selectedMenuItems[m]?.[w.date] || {};
+                    count += Object.values(daySelection).reduce((acc, arr) => acc + (arr?.length || 0), 0);
+                  }
+                  
+                  return (
+                    <button
+                      key={w.date}
+                      type="button"
+                      onClick={() => setActiveDateIndex(idx)}
+                      style={{
+                        padding: "4px 8px", fontSize: 11, fontWeight: isActive ? 700 : 500,
+                        border: "1px solid", borderColor: isActive ? "#2e7d32" : "#ccc",
+                        borderRadius: 3, background: isActive ? "#e8f5e9" : "#fff",
+                        color: isActive ? "#2e7d32" : "#555", cursor: "pointer"
+                      }}
+                    >
+                      {formatShortDate(w.date)} <span style={{ fontSize: 9, opacity: 0.8, color: isActive ? "#2e7d32" : "#888" }}>({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                type="button"
+                onClick={copyActiveMenuToAllDays}
+                style={{
+                  padding: "4px 10px", fontSize: 11, fontWeight: 600,
+                  border: "1px solid #c8e6c9", borderRadius: 3,
+                  background: "#e8f5e9", color: "#2e7d32", cursor: "pointer"
+                }}
+              >
+                Copier ce menu sur toute la semaine
+              </button>
+            </div>
+
             <MenuCompositionPanel
               mealType={state.mealType}
-              selectedMenuItems={state.selectedMenuItems}
-              onToggleItem={handleToggleItem}
+              selectedMenuItems={getMenuForActiveDate()}
+              onToggleItem={(meal, cat, item) => handleToggleItem(meal, activeDate, cat, item)}
             />
 
             <EnvironmentalControls

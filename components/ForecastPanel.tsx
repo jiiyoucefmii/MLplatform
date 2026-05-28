@@ -63,13 +63,18 @@ function confidenceColor(q10: number, q90: number, q50: number): string {
 }
 
 function buildPayload(state: DashboardState, activeMeals: string[]) {
-  // menu_counts per meal
-  const menu_counts: Record<string, MenuCounts> = {};
+  // menu_counts per meal: list of 7 daily MenuCounts matching forecast weatherDays dates
+  const menu_counts: Record<string, MenuCounts[]> = {};
   for (const meal of activeMeals) {
-    menu_counts[meal] = state.menuCounts[meal] || {
-      n_bread:0, n_protein:0, n_main_dish:0, n_side_dish:0,
-      n_soup:0, n_dessert:0, n_drink:0, n_spread:0,
-    };
+    const countsList: MenuCounts[] = [];
+    for (const w of state.weatherDays) {
+      const dayCounts = state.menuCounts[meal]?.[w.date] || {
+        n_bread: 0, n_protein: 0, n_main_dish: 0, n_side_dish: 0,
+        n_soup: 0, n_dessert: 0, n_drink: 0, n_spread: 0,
+      };
+      countsList.push(dayCounts);
+    }
+    menu_counts[meal] = countsList;
   }
 
   // calendar_days: same flags repeated 7 times, date injected from weatherDays
@@ -485,28 +490,22 @@ export default function ForecastPanel({ state, activeMeals }: ForecastPanelProps
   const [response,  setResponse]  = useState<ForecastResponse | null>(null);
   const [error,     setError]     = useState("");
 
-  const getSelectedCount = (meal: string) => {
-    const selected = state.selectedMenuItems[meal] || {};
-    return Object.values(selected).reduce((acc, arr) => acc + (arr?.length || 0), 0);
-  };
-
   const validationErrors: string[] = [];
-  if (activeMeals.includes("breakfast")) {
-    const count = getSelectedCount("breakfast");
-    if (count < 3) {
-      validationErrors.push(`Petit-déjeuner : au moins 3 articles requis (actuel : ${count})`);
+  for (const meal of activeMeals) {
+    const minRequired = meal === "breakfast" ? 3 : 5;
+    const mealLabel = meal === "breakfast" ? "Petit-déjeuner" : meal === "lunch" ? "Déjeuner" : "Dîner";
+    const invalidDays: string[] = [];
+
+    for (const w of state.weatherDays) {
+      const daySelection = state.selectedMenuItems[meal]?.[w.date] || {};
+      const count = Object.values(daySelection).reduce((acc, arr) => acc + (arr?.length || 0), 0);
+      if (count < minRequired) {
+        invalidDays.push(`${formatDate(w.date)} (${count})`);
+      }
     }
-  }
-  if (activeMeals.includes("lunch")) {
-    const count = getSelectedCount("lunch");
-    if (count < 5) {
-      validationErrors.push(`Déjeuner : au moins 5 articles requis (actuel : ${count})`);
-    }
-  }
-  if (activeMeals.includes("dinner")) {
-    const count = getSelectedCount("dinner");
-    if (count < 5) {
-      validationErrors.push(`Dîner : au moins 5 articles requis (actuel : ${count})`);
+
+    if (invalidDays.length > 0) {
+      validationErrors.push(`${mealLabel} : au moins ${minRequired} articles requis. Jours incorrects : ${invalidDays.join(", ")}`);
     }
   }
 
