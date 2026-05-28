@@ -130,12 +130,10 @@ function MealForecastTable({ meal, result }: { meal: string; result: MealResult 
       {/* Table */}
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
         <thead>
-          <tr style={{ background: "#f5f5f5", borderBottom: "1px solid #ddd" }}>
-            <th style={thStyle}>Jour</th>
-            <th style={{ ...thStyle, color: "#1565c0" }}>Q10 (bas)</th>
-            <th style={{ ...thStyle, color: "#2e7d32", fontWeight: 800, fontSize: 12 }}>Q50 ★</th>
-            <th style={{ ...thStyle, color: "#b71c1c" }}>Q90 (haut)</th>
-            <th style={thStyle}>Intervalle</th>
+          <tr style={{ background: "#f1f1f1" }}>
+            <th style={thStyle}>Date</th>
+            <th style={{ ...thStyle, color: "#2e7d32", fontWeight: 800, fontSize: 12 }}>Prévision (Q50)</th>
+            <th style={thStyle}>Intervalle (Range)</th>
             <th style={thStyle}>Confiance</th>
           </tr>
         </thead>
@@ -157,10 +155,11 @@ function MealForecastTable({ meal, result }: { meal: string; result: MealResult 
                   {formatDate(d.date)}
                   {isWeekend && <span style={{ marginLeft: 3, fontSize: 9, background: "#e8f5e9", color: "#2e7d32", borderRadius: 2, padding: "1px 3px" }}>WE</span>}
                 </td>
-                <td style={{ ...tdStyle, color: "#1565c0" }}>{d.q10.toFixed(0)}</td>
                 <td style={{ ...tdStyle, fontWeight: 800, fontSize: 13, color: "#1b5e20" }}>{d.q50.toFixed(0)}</td>
-                <td style={{ ...tdStyle, color: "#b71c1c" }}>{d.q90.toFixed(0)}</td>
-                <td style={{ ...tdStyle, color: "#555" }}>±{(spread / 2).toFixed(0)}</td>
+                <td style={{ ...tdStyle, color: "#555" }}>
+                  {d.q50.toFixed(0)} <span style={{ color: "#777", fontSize: 11 }}>± {(spread / 2).toFixed(0)}</span>
+                  <span style={{ color: "#999", fontSize: 10, marginLeft: 6 }}>({d.q10.toFixed(0)} - {d.q90.toFixed(0)})</span>
+                </td>
                 <td style={{ ...tdStyle }}>
                   <span style={{
                     display: "inline-block", width: 8, height: 8,
@@ -177,16 +176,16 @@ function MealForecastTable({ meal, result }: { meal: string; result: MealResult 
         <tfoot>
           <tr style={{ background: "#f9f9f9", borderTop: "2px solid #dee2e6" }}>
             <td style={{ ...tdStyle, fontWeight: 700 }}>TOTAL 7j</td>
-            <td style={{ ...tdStyle, fontWeight: 600, color: "#1565c0" }}>
-              {result.forecasts.reduce((s, d) => s + d.q10, 0).toFixed(0)}
-            </td>
             <td style={{ ...tdStyle, fontWeight: 800, color: "#1b5e20", fontSize: 12 }}>
               {result.forecasts.reduce((s, d) => s + d.q50, 0).toFixed(0)}
             </td>
-            <td style={{ ...tdStyle, fontWeight: 600, color: "#b71c1c" }}>
-              {result.forecasts.reduce((s, d) => s + d.q90, 0).toFixed(0)}
+            <td style={{ ...tdStyle, fontWeight: 600, color: "#555" }}>
+              {result.forecasts.reduce((s, d) => s + d.q50, 0).toFixed(0)}{" "}
+              <span style={{ color: "#777", fontSize: 11 }}>
+                ± {result.forecasts.reduce((s, d) => s + (d.q90 - d.q10) / 2, 0).toFixed(0)}
+              </span>
             </td>
-            <td colSpan={2} />
+            <td />
           </tr>
         </tfoot>
       </table>
