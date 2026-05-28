@@ -1,0 +1,38 @@
+{
+  "selected_approach": "Hybrid residual model",
+  "selected_model": "lightgbm_residual",
+  "validation_MAE": 33.710776199992374,
+  "test_MAE": 42.67068375663886,
+  "validation_RMSE": 70.5438739362742,
+  "test_RMSE": 78.37016813914782,
+  "validation_MAPE": 47.65965392193167,
+  "test_MAPE": 25.90150121514785,
+  "validation_R2": 0.9552745844920748,
+  "test_R2": 0.9238829535515884,
+  "improvement_over_lag7": [
+    {
+      "approach": "Hybrid residual model",
+      "best_model": "lightgbm_residual",
+      "split": "validation",
+      "model_MAE": 33.710776199992374,
+      "lag7_MAE": 54.25602585867887,
+      "MAE_improvement": 20.54524965868649,
+      "MAE_improvement_percent": 37.86722181274552
+    },
+    {
+      "approach": "Hybrid residual model",
+      "best_model": "lightgbm_residual",
+      "split": "test",
+      "model_MAE": 42.67068375663886,
+      "lag7_MAE": 93.24984981654514,
+      "MAE_improvement": 50.57916605990628,
+      "MAE_improvement_percent": 54.24047991435169
+    }
+  ],
+  "reason_for_selection": "Selected by the scorecard prioritizing test MAE, validation MAE, lag_7 improvement, generalization stability, and deployment practicality.",
+  "limitations": "The hybrid residual model requires lag_7d and therefore needs fallback logic when one-week history is unavailable.",
+  "fallback_recommendation": "Use the best direct model or historical rolling/median demand when lag_7d is missing.",
+  "saved_model_path": "outputs\\hybrid_residual_model\\models\\lightgbm_residual.joblib",
+  "prediction_path_validation": "outputs\\hybrid_residual_model\\predictions\\lightgbm_residual_validation_predictions.csv",
+  "prediction_path_test": "outputs\\hybrid_residual_model\\predictions\\lightgbm_residual_test_predictions.csv"
+}

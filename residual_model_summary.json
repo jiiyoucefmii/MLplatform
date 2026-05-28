@@ -1,0 +1,146 @@
+{
+  "notebook": "07_hybrid_residual_model.ipynb",
+  "approach_name": "hybrid_residual_forecasting_model",
+  "target_col": "target_count",
+  "residual_target_col": "target_residual",
+  "baseline_col": "lag_7d",
+  "train_shape_original": [
+    506547,
+    304
+  ],
+  "validation_shape_original": [
+    115236,
+    304
+  ],
+  "test_shape_original": [
+    128934,
+    304
+  ],
+  "train_shape_after_lag7_filtering": [
+    440754,
+    305
+  ],
+  "validation_shape_after_lag7_filtering": [
+    104259,
+    305
+  ],
+  "test_shape_after_lag7_filtering": [
+    108201,
+    305
+  ],
+  "feature_counts": {
+    "tree": 272,
+    "linear": 250
+  },
+  "models_attempted": [
+    "catboost_residual",
+    "lightgbm_residual",
+    "xgboost_residual",
+    "hist_gb_residual",
+    "ridge_residual"
+  ],
+  "models_succeeded": [
+    "catboost_residual",
+    "lightgbm_residual",
+    "xgboost_residual",
+    "hist_gb_residual",
+    "ridge_residual"
+  ],
+  "best_model_by_validation_mae": "lightgbm_residual",
+  "best_validation_mae": 33.710776199992374,
+  "best_test_mae": 42.67068375663886,
+  "baseline_validation_mae_on_residual_rows": 54.25602585867887,
+  "baseline_test_mae_on_residual_rows": 93.24984981654514,
+  "validation_improvement_over_baseline": 20.545249658686494,
+  "validation_improvement_percent": 37.86722181274552,
+  "test_improvement_over_baseline": 50.57916605990628,
+  "test_improvement_percent": 54.24047991435169,
+  "comparison_with_previous_approaches": [
+    {
+      "approach": "global_direct",
+      "best_model": "catboost_global",
+      "validation_MAE": 36.604430846799644,
+      "test_MAE": 46.689497355241826,
+      "validation_improvement_over_lag7": 17.651595011879223,
+      "test_improvement_over_lag7": 46.56035246130331
+    },
+    {
+      "approach": "separate_meal_type_direct",
+      "best_model": "lightgbm_separate_meal",
+      "validation_MAE": 36.59383676645603,
+      "test_MAE": 44.66757436753685,
+      "validation_improvement_over_lag7": 17.66218909222284,
+      "test_improvement_over_lag7": 48.582275449008286
+    },
+    {
+      "approach": "hybrid_residual",
+      "best_model": "lightgbm_residual",
+      "validation_MAE": 33.710776199992374,
+      "test_MAE": 42.67068375663886,
+      "validation_improvement_over_lag7": 20.545249658686494,
+      "test_improvement_over_lag7": 50.57916605990628
+    }
+  ],
+  "saved_model_paths": {
+    "catboost_residual": "outputs\\hybrid_residual_model\\models\\catboost_residual.cbm",
+    "lightgbm_residual": "outputs\\hybrid_residual_model\\models\\lightgbm_residual.joblib",
+    "xgboost_residual": "outputs\\hybrid_residual_model\\models\\xgboost_residual.joblib",
+    "hist_gb_residual": "outputs\\hybrid_residual_model\\models\\hist_gb_residual.joblib",
+    "ridge_residual": "outputs\\hybrid_residual_model\\models\\ridge_residual.joblib"
+  },
+  "saved_prediction_paths": {
+    "catboost_residual": {
+      "validation": "outputs\\hybrid_residual_model\\predictions\\catboost_residual_validation_predictions.csv",
+      "test": "outputs\\hybrid_residual_model\\predictions\\catboost_residual_test_predictions.csv"
+    },
+    "lightgbm_residual": {
+      "validation": "outputs\\hybrid_residual_model\\predictions\\lightgbm_residual_validation_predictions.csv",
+      "test": "outputs\\hybrid_residual_model\\predictions\\lightgbm_residual_test_predictions.csv"
+    },
+    "xgboost_residual": {
+      "validation": "outputs\\hybrid_residual_model\\predictions\\xgboost_residual_validation_predictions.csv",
+      "test": "outputs\\hybrid_residual_model\\predictions\\xgboost_residual_test_predictions.csv"
+    },
+    "hist_gb_residual": {
+      "validation": "outputs\\hybrid_residual_model\\predictions\\hist_gb_residual_validation_predictions.csv",
+      "test": "outputs\\hybrid_residual_model\\predictions\\hist_gb_residual_test_predictions.csv"
+    },
+    "ridge_residual": {
+      "validation": "outputs\\hybrid_residual_model\\predictions\\ridge_residual_validation_predictions.csv",
+      "test": "outputs\\hybrid_residual_model\\predictions\\ridge_residual_test_predictions.csv"
+    }
+  },
+  "saved_report_paths": {
+    "row_coverage": "outputs\\hybrid_residual_model\\reports\\residual_row_coverage_report.csv",
+    "residual_summary": "outputs\\hybrid_residual_model\\reports\\residual_target_summary.csv",
+    "baseline_reference": "outputs\\hybrid_residual_model\\reports\\residual_lag7_baseline_reference.csv",
+    "model_results": "outputs\\hybrid_residual_model\\reports\\residual_model_results.csv",
+    "validation_ranking": "outputs\\hybrid_residual_model\\reports\\residual_model_validation_ranking.csv",
+    "test_ranking": "outputs\\hybrid_residual_model\\reports\\residual_model_test_ranking.csv",
+    "residual_metrics": "outputs\\hybrid_residual_model\\reports\\residual_prediction_metrics.csv",
+    "by_meal_type": "outputs\\hybrid_residual_model\\reports\\residual_model_results_by_meal_type.csv",
+    "by_canteen_validation": "outputs\\hybrid_residual_model\\reports\\best_residual_model_by_canteen_validation.csv",
+    "by_canteen_test": "outputs\\hybrid_residual_model\\reports\\best_residual_model_by_canteen_test.csv",
+    "fair_baseline_comparison": "outputs\\hybrid_residual_model\\reports\\best_residual_vs_lag7_fair_comparison.csv",
+    "overfitting": "outputs\\hybrid_residual_model\\reports\\residual_overfitting_diagnosis.csv",
+    "feature_importance": "outputs\\hybrid_residual_model\\reports\\best_residual_model_feature_importance.csv",
+    "previous_approaches": "outputs\\hybrid_residual_model\\reports\\residual_vs_previous_approaches_comparison.csv"
+  },
+  "saved_plot_paths": {
+    "residual_distribution": "outputs\\hybrid_residual_model\\plots\\residual_distribution_by_split.png",
+    "validation_mae": "outputs\\hybrid_residual_model\\plots\\residual_validation_mae_by_model.png",
+    "test_mae": "outputs\\hybrid_residual_model\\plots\\residual_test_mae_by_model.png",
+    "rmse": "outputs\\hybrid_residual_model\\plots\\residual_rmse_by_model.png",
+    "mape": "outputs\\hybrid_residual_model\\plots\\residual_mape_by_model.png",
+    "r2": "outputs\\hybrid_residual_model\\plots\\residual_r2_by_model.png",
+    "improvement": "outputs\\hybrid_residual_model\\plots\\residual_improvement_over_lag7.png",
+    "actual_vs_pred_validation": "outputs\\hybrid_residual_model\\plots\\best_residual_actual_vs_pred_validation.png",
+    "actual_vs_pred_test": "outputs\\hybrid_residual_model\\plots\\best_residual_actual_vs_pred_test.png",
+    "error_distribution": "outputs\\hybrid_residual_model\\plots\\best_residual_error_distribution.png",
+    "absolute_error_by_meal_type": "outputs\\hybrid_residual_model\\plots\\best_residual_absolute_error_by_meal_type.png",
+    "mae_by_meal_type": "outputs\\hybrid_residual_model\\plots\\best_residual_mae_by_meal_type.png",
+    "overfitting": "outputs\\hybrid_residual_model\\plots\\residual_overfitting_train_validation_test_mae.png",
+    "feature_importance": "outputs\\hybrid_residual_model\\plots\\best_residual_model_top30_feature_importance.png",
+    "approach_test_mae": "outputs\\hybrid_residual_model\\plots\\approach_test_mae_comparison.png"
+  }
+}
