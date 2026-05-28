@@ -23,30 +23,50 @@ if _CSV_PATH.exists():
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Patch pipeline config paths to avoid LightGBM Arabic-path bug
+# Patch pipeline config paths dynamically based on environment or fallback
 import pipeline.config as _cfg
+import pipeline.paths as _pp
+from pipeline.paths import PipelineLayout
 from pathlib import Path as _P
-_cfg.ARTIFACTS_DIR = _P("Z:/artifacts")
-_cfg.MODELS_DIR    = _P("Z:/artifacts/models")
-_cfg.CORRECTIONS_PATH = _P("Z:/artifacts/forecast_corrections.json")
 import os
+
+_env_artifacts_dir = os.getenv("ARTIFACTS_DIR")
+if _env_artifacts_dir:
+    artifacts_path = _P(_env_artifacts_dir)
+else:
+    artifacts_path = _P("Z:/artifacts") if (os.name == 'nt' and _P("Z:/artifacts").exists()) else _P(__file__).resolve().parent.parent.parent / "intellecanteen" / "ml_pipeline_7days_forcasting" / "artifacts"
+
+_env_models_dir = os.getenv("MODELS_DIR")
+if _env_models_dir:
+    models_path = _P(_env_models_dir)
+else:
+    models_path = artifacts_path / "models"
+
+_env_corrections = os.getenv("CORRECTIONS_PATH")
+if _env_corrections:
+    corrections_path = _P(_env_corrections)
+else:
+    corrections_path = artifacts_path / "forecast_corrections.json"
+
+_cfg.ARTIFACTS_DIR = artifacts_path
+_cfg.MODELS_DIR    = models_path
+_cfg.CORRECTIONS_PATH = corrections_path
+
 _env_data_path = os.getenv("DATA_PATH")
 if _env_data_path:
     _cfg.DATA_PATH = _P(_env_data_path)
 else:
     _cfg.DATA_PATH = _P(__file__).resolve().parent.parent / "model_second_stage_clean.csv"
-# Also patch LEGACY_LAYOUT to point to Z:
-import pipeline.paths as _pp
-from pipeline.paths import PipelineLayout
+
 _pp.LEGACY_LAYOUT = PipelineLayout(
-    name               = "production",
-    artifacts_dir      = _P("Z:/artifacts"),
-    models_dir         = _P("Z:/artifacts/models"),
-    reports_dir        = _P("Z:/artifacts/reports"),
-    calibration_path   = _P("Z:/artifacts/quantile_calibration.json"),
-    corrections_path   = _P("Z:/artifacts/forecast_corrections.json"),
-    feature_columns_path = _P("Z:/artifacts/feature_columns.json"),
-    hyperparams_path   = _P("Z:/artifacts/hyperparams.json"),
+    name                 = "production",
+    artifacts_dir        = artifacts_path,
+    models_dir           = models_path,
+    reports_dir          = artifacts_path / "reports",
+    calibration_path     = _P(os.getenv("CALIBRATION_PATH")) if os.getenv("CALIBRATION_PATH") else (artifacts_path / "quantile_calibration.json"),
+    corrections_path     = corrections_path,
+    feature_columns_path = artifacts_path / "feature_columns.json",
+    hyperparams_path     = artifacts_path / "hyperparams.json",
 )
 
 from pipeline.data import load_raw_data
