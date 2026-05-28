@@ -29,7 +29,12 @@ from pathlib import Path as _P
 _cfg.ARTIFACTS_DIR = _P("Z:/artifacts")
 _cfg.MODELS_DIR    = _P("Z:/artifacts/models")
 _cfg.CORRECTIONS_PATH = _P("Z:/artifacts/forecast_corrections.json")
-_cfg.DATA_PATH = _P(__file__).resolve().parent.parent / "model_second_stage_clean.csv"
+import os
+_env_data_path = os.getenv("DATA_PATH")
+if _env_data_path:
+    _cfg.DATA_PATH = _P(_env_data_path)
+else:
+    _cfg.DATA_PATH = _P(__file__).resolve().parent.parent / "model_second_stage_clean.csv"
 # Also patch LEGACY_LAYOUT to point to Z:
 import pipeline.paths as _pp
 from pipeline.paths import PipelineLayout
