@@ -178,7 +178,7 @@ export default function SessionContextPanel({
                               textAlign: "center", width: "100%"
                             }}
                           >
-                            Créer et utiliser la cantine : "{search}"
+                            Créer et utiliser la cantine : &quot;{search}&quot;
                           </button>
                         )}
                       </div>
