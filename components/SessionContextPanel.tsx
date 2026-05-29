@@ -18,6 +18,7 @@ interface SessionContextPanelProps {
   mealType:       MealType;
   canteenId:      string;
   canteenDisplay: string;
+  wilayaNum:      number;
   onDateChange:       (date: string) => void;
   onMealTypeChange:   (meal: MealType) => void;
   onCanteenChange:    (id: string, display: string, wilayaNum: number) => void;
@@ -30,8 +31,10 @@ const MEAL_TYPES: { id: MealType; fr: string; emoji: string }[] = [
   { id: "All Meals", fr: "Tous repas", emoji: "📊" },
 ];
 
+const WILAYA_OPTIONS = Array.from({ length: 48 }, (_, i) => i + 1);
+
 export default function SessionContextPanel({
-  date, mealType, canteenId, canteenDisplay,
+  date, mealType, canteenId, canteenDisplay, wilayaNum,
   onDateChange, onMealTypeChange, onCanteenChange,
 }: SessionContextPanelProps) {
   const [canteens, setCanteens] = useState<CanteenOption[]>([]);
@@ -75,6 +78,27 @@ export default function SessionContextPanel({
     setOpen(false);
     setSearch("");
   };
+
+  const handleSelectCustom = () => {
+    const cid = search.trim();
+    if (!cid) return;
+    let wilayaNum = 1;
+    const parts = cid.split("__");
+    if (parts.length > 0) {
+      const douStr = parts[0];
+      if (douStr.length > 1) {
+        const parsed = parseInt(douStr.substring(0, douStr.length - 1), 10);
+        if (!isNaN(parsed)) {
+          wilayaNum = parsed;
+        }
+      }
+    }
+    onCanteenChange(cid, `Cantine personnalisée : ${cid}`, wilayaNum);
+    setOpen(false);
+    setSearch("");
+  };
+
+  const isCustomCanteen = !!canteenId && !canteens.some(c => c.canteen_id === canteenId);
 
   return (
     <div className="panel">
@@ -141,7 +165,23 @@ export default function SessionContextPanel({
                   </div>
                   <div style={{ overflowY: "auto", flex: 1 }}>
                     {filtered.length === 0 ? (
-                      <div style={{ padding: "10px 12px", color: "#aaa", fontSize: 12 }}>Aucun résultat</div>
+                      <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ color: "#aaa", fontSize: 12 }}>Aucun résultat</div>
+                        {search.trim().length > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleSelectCustom}
+                            style={{
+                              padding: "6px 10px", fontSize: 11, color: "#2e7d32",
+                              border: "1px dashed #2e7d32", borderRadius: 3,
+                              background: "#e8f5e9", cursor: "pointer", fontWeight: 600,
+                              textAlign: "center", width: "100%"
+                            }}
+                          >
+                            Créer et utiliser la cantine : "{search}"
+                          </button>
+                        )}
+                      </div>
                     ) : filtered.map((c) => (
                       <button
                         key={c.canteen_id}
@@ -170,6 +210,38 @@ export default function SessionContextPanel({
             </div>
           )}
         </div>
+
+        {isCustomCanteen && (
+          <div style={{
+            marginBottom: 18, padding: "10px 12px",
+            background: "#f1f8f1", border: "1px dashed #2e7d32",
+            borderRadius: 4, display: "flex", flexDirection: "column", gap: 6
+          }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#2e7d32" }}>
+              ⚙️ Cantine personnalisée : Associer manuellement avec une région (Wilaya)
+            </label>
+            <div>
+              <select
+                value={wilayaNum || 1}
+                onChange={(e) => {
+                  const wNum = parseInt(e.target.value, 10);
+                  onCanteenChange(canteenId, canteenDisplay, wNum);
+                }}
+                className="progres-input"
+                style={{ width: "100%", fontSize: 12, padding: "6px 10px", background: "#fff", border: "1px solid #bbbbbb" }}
+              >
+                {WILAYA_OPTIONS.map(w => (
+                  <option key={w} value={w}>
+                    Wilaya {String(w).padStart(2, "0")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p style={{ marginTop: 2, fontSize: 10, color: "#555", marginBottom: 0 }}>
+              Permet au modèle d&#39;estimer la moyenne régionale pour le Fallback 3.
+            </p>
+          </div>
+        )}
 
         {/* ── Date + Meal Type ── */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>

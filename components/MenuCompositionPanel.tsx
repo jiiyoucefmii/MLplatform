@@ -63,13 +63,14 @@ const MEAL_LABELS: Record<string, string> = {
 export type SelectedMenuItems = Record<string, string[]>;
 
 // Convert selected items → MenuCounts (just count per category)
-export function selectedItemsToMenuCounts(selected: Record<string, string[]>): MenuCounts {
+export function selectedItemsToMenuCounts(selected: Record<string, string[]>, meal?: string): MenuCounts {
+  const isBreakfast = meal?.toLowerCase() === "breakfast";
   return {
     n_bread:     selected.bread?.length     ?? 0,
     n_protein:   selected.protein?.length   ?? 0,
-    n_main_dish: selected.main_dish?.length ?? 0,
-    n_side_dish: selected.side_dish?.length ?? 0,
-    n_soup:      selected.soup?.length      ?? 0,
+    n_main_dish: isBreakfast ? 0 : (selected.main_dish?.length ?? 0),
+    n_side_dish: isBreakfast ? 0 : (selected.side_dish?.length ?? 0),
+    n_soup:      isBreakfast ? 0 : (selected.soup?.length ?? 0),
     n_dessert:   selected.dessert?.length   ?? 0,
     n_drink:     selected.drink?.length     ?? 0,
     n_spread:    selected.spread?.length    ?? 0,
@@ -160,6 +161,7 @@ function CategoryPicker({
               );
             })}
           </div>
+
           {/* Quick actions */}
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <button type="button" onClick={() => items.forEach(i => { if (!selected.includes(i)) onToggle(i); })}
@@ -186,7 +188,15 @@ function MealMenuBlock({
   onToggleItem: (cat: string, item: string) => void;
 }) {
   const color = MEAL_COLORS[meal] || MEAL_COLORS.lunch;
-  const cats = CATEGORIES.filter(c => c.meals.includes(meal));
+  
+  // Explicitly remove main_dish, side_dish, and soup for breakfast
+  const cats = CATEGORIES.filter(c => {
+    if (meal.toLowerCase() === "breakfast" && (c.key === "main_dish" || c.key === "side_dish" || c.key === "soup")) {
+      return false;
+    }
+    return c.meals.includes(meal);
+  });
+  
   const totalSelected = cats.reduce((s, c) => s + (selectedItems[c.key]?.length ?? 0), 0);
   const mealItems = MENU_ITEMS[meal] ?? {};
 

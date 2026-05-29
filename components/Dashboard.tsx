@@ -24,15 +24,15 @@ export interface MenuCounts {
 
 export interface WeatherDay {
   date:              string;
-  temp_max:          number;
-  temp_min:          number;
-  temp_mean:         number;
-  apparent_temp_max: number;
-  precip:            number;
-  windspeed:         number;
-  sunshine_s:        number;
-  humidity:          number;
-  weather_code:      number;
+  temp_max:          number | null;
+  temp_min:          number | null;
+  temp_mean:         number | null;
+  apparent_temp_max: number | null;
+  precip:            number | null;
+  windspeed:         number | null;
+  sunshine_s:        number | null;
+  humidity:          number | null;
+  weather_code:      number | null;
 }
 
 export interface DashboardState {
@@ -116,7 +116,7 @@ export default function Dashboard({ agentInfo, onLogout }: DashboardProps) {
       
       const nextCounts = { ...prev.menuCounts };
       const mealCounts = { ...(nextCounts[meal] ?? {}) };
-      mealCounts[date] = selectedItemsToMenuCounts(dateSel);
+      mealCounts[date] = selectedItemsToMenuCounts(dateSel, meal);
       nextCounts[meal] = mealCounts;
 
       return { ...prev, selectedMenuItems: nextSelected, menuCounts: nextCounts };
@@ -141,7 +141,7 @@ export default function Dashboard({ agentInfo, onLogout }: DashboardProps) {
         for (const w of prev.weatherDays) {
           if (w.date === activeDate) continue;
           mealSel[w.date] = JSON.parse(JSON.stringify(activeSelection));
-          mealCounts[w.date] = selectedItemsToMenuCounts(activeSelection);
+          mealCounts[w.date] = selectedItemsToMenuCounts(activeSelection, meal);
         }
         
         nextSelected[meal] = mealSel;
@@ -188,6 +188,7 @@ export default function Dashboard({ agentInfo, onLogout }: DashboardProps) {
               mealType={state.mealType}
               canteenId={state.canteenId}
               canteenDisplay={state.canteenDisplay}
+              wilayaNum={state.wilayaNum}
               onDateChange={handleDateChange}
               onMealTypeChange={handleMealTypeChange}
               onCanteenChange={handleCanteenChange}

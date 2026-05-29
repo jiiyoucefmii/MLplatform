@@ -121,7 +121,7 @@ export default function EnvironmentalControls({
     }
   }
 
-  function updateDay(idx: number, field: keyof WeatherDay, value: number | string) {
+  function updateDay(idx: number, field: keyof WeatherDay, value: number | string | null) {
     const next = weatherDays.map((d, i) => i === idx ? { ...d, [field]: value } : d);
     onWeatherDaysChange(next);
   }
@@ -233,9 +233,9 @@ export default function EnvironmentalControls({
                     {/* sunshine_s → display as hours */}
                     <td style={td}>
                       <NumInput
-                        value={Math.round(day.sunshine_s / 3600 * 10) / 10}
+                        value={day.sunshine_s === null || day.sunshine_s === undefined ? null : Math.round(day.sunshine_s / 3600 * 10) / 10}
                         min={0} max={14} unit="h"
-                        onChange={(v) => updateDay(idx, "sunshine_s", v * 3600)}
+                        onChange={(v) => updateDay(idx, "sunshine_s", v === null ? null : v * 3600)}
                         step={0.5}
                         disabled={weatherAutoFetch}
                       />
@@ -244,14 +244,18 @@ export default function EnvironmentalControls({
                     <td style={td}>
                       {weatherAutoFetch ? (
                         <span style={{ fontSize: 11, color: "#555" }}>
-                          {WMO_LABELS[day.weather_code] ?? `Code ${day.weather_code}`}
+                          {day.weather_code !== null && day.weather_code !== undefined ? (WMO_LABELS[day.weather_code] ?? `Code ${day.weather_code}`) : "Inconnu"}
                         </span>
                       ) : (
                         <select
-                          value={day.weather_code}
-                          onChange={(e) => updateDay(idx, "weather_code", parseInt(e.target.value))}
+                          value={day.weather_code === null || day.weather_code === undefined ? "" : day.weather_code}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateDay(idx, "weather_code", val === "" ? null : parseInt(val, 10));
+                          }}
                           style={{ fontSize: 11, border: "1px solid #ccc", borderRadius: 2, padding: "2px 4px" }}
                         >
+                          <option value="">— Inconnu —</option>
                           {Object.entries(WMO_LABELS).map(([code, label]) => (
                             <option key={code} value={code}>{label}</option>
                           ))}
@@ -334,19 +338,25 @@ const td: React.CSSProperties = {
 // ── Numeric input ─────────────────────────────────────────────────────────────
 function NumInput({
   value, onChange, min, max, unit, step = 1, disabled = false,
-}: { value: number; onChange: (v: number) => void; min: number; max: number; unit: string; step?: number; disabled?: boolean }) {
+}: { value: number | null | undefined; onChange: (v: number | null) => void; min: number; max: number; unit: string; step?: number; disabled?: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2 }}>
       <input
         type="number"
-        value={value}
+        value={value === null || value === undefined ? "" : value}
         min={min}
         max={max}
         step={step}
         disabled={disabled}
+        placeholder="—"
         onChange={(e) => {
-          const v = parseFloat(e.target.value);
-          if (!isNaN(v)) onChange(Math.max(min, Math.min(max, v)));
+          const val = e.target.value;
+          if (val === "") {
+            onChange(null);
+          } else {
+            const v = parseFloat(val);
+            if (!isNaN(v)) onChange(Math.max(min, Math.min(max, v)));
+          }
         }}
         style={{
           width: 54, textAlign: "center", fontSize: 11,

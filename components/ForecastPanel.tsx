@@ -62,6 +62,23 @@ function confidenceColor(q10: number, q90: number, q50: number): string {
   return "#e53935";
 }
 
+function getForecastMethod(horizon: number, warnings: string[]): { name: string; color: string } {
+  const hKey = `:h${horizon}`;
+  if (warnings.some(w => w.includes("fallback_3") && w.includes(hKey))) {
+    return { name: "Fallback 3 (Moyenne Régionale)", color: "#c62828" };
+  }
+  if (warnings.some(w => w.includes("fallback_2") && w.includes(hKey))) {
+    return { name: "Fallback 2 (Moyenne Mobile)", color: "#ef6c00" };
+  }
+  if (warnings.some(w => w.includes("fallback_1") && w.includes(hKey))) {
+    return { name: "Fallback 1 (Modèle Direct)", color: "#1565c0" };
+  }
+  if (warnings.some(w => w.includes("primary_model_failed") && w.includes(hKey))) {
+    return { name: "Erreur Modèle Principal", color: "#c62828" };
+  }
+  return { name: "Modèle Résiduel Principal", color: "#2e7d32" };
+}
+
 function buildPayload(state: DashboardState, activeMeals: string[]) {
   // menu_counts per meal: list of 7 daily MenuCounts matching forecast weatherDays dates
   const menu_counts: Record<string, MenuCounts[]> = {};
@@ -102,6 +119,7 @@ function buildPayload(state: DashboardState, activeMeals: string[]) {
     weather_days:  state.weatherDays,
     calendar_days,
     menu_counts,
+    wilaya_num:    state.wilayaNum,
   };
 }
 
@@ -405,6 +423,7 @@ function MealForecastTable({ meal, result }: { meal: string; result: MealResult 
             <th style={{ ...thStyle, color: "#b71c1c" }}>Maximale attendue</th>
             <th style={thStyle}>Marge (±)</th>
             <th style={thStyle}>Confiance</th>
+            <th style={thStyle}>Méthode de prévision</th>
           </tr>
         </thead>
         <tbody>
@@ -444,6 +463,26 @@ function MealForecastTable({ meal, result }: { meal: string; result: MealResult 
                     {confPercent}%
                   </span>
                 </td>
+                <td style={{ ...tdStyle }}>
+                  {(() => {
+                    const method = getForecastMethod(d.horizon, result.warnings || []);
+                    return (
+                      <span style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: method.color,
+                        background: method.color + "12",
+                        border: `1px solid ${method.color}33`,
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                        display: "inline-block",
+                        whiteSpace: "nowrap",
+                      }}>
+                        {method.name}
+                      </span>
+                    );
+                  })()}
+                </td>
               </tr>
             );
           })}
@@ -463,6 +502,7 @@ function MealForecastTable({ meal, result }: { meal: string; result: MealResult 
             <td style={{ ...tdStyle, fontWeight: 600, color: "#555" }}>
               ±{result.forecasts.reduce((s, d) => s + (d.q90 - d.q10) / 2, 0).toFixed(0)}
             </td>
+            <td />
             <td />
           </tr>
         </tfoot>
@@ -498,7 +538,12 @@ export default function ForecastPanel({ state, activeMeals }: ForecastPanelProps
 
     for (const w of state.weatherDays) {
       const daySelection = state.selectedMenuItems[meal]?.[w.date] || {};
-      const count = Object.values(daySelection).reduce((acc, arr) => acc + (arr?.length || 0), 0);
+      const count = Object.entries(daySelection).reduce((acc, [cat, arr]) => {
+        if (meal === "breakfast" && (cat === "main_dish" || cat === "side_dish" || cat === "soup")) {
+          return acc;
+        }
+        return acc + (arr?.length || 0);
+      }, 0);
       if (count < minRequired) {
         invalidDays.push(`${formatDate(w.date)} (${count})`);
       }
